@@ -11,7 +11,7 @@ typedef struct
 typedef struct
 {
     int vertices;
-    int **adjlist;
+    Node **adjlist;
 
 } Graph;
 
@@ -65,10 +65,32 @@ void print_graph(Graph *graph)
     }
 }
 
+void free_graph(Graph *graph)
+{
+    if (!graph)
+        return;
+
+    for (size_t vertex = 0; vertex < graph->vertices; ++vertex)
+    {
+        Node *node = graph->adjlist[vertex];
+
+        while (node)
+        {
+            Node *temp = node;
+            node = node->next;
+            free(temp);
+        }
+    }
+    free(graph->adjlist);
+    free(graph);
+}
+
 int main()
 {
     Graph *g = create_graph(5);
     add_edge(g, 0, 1);
     add_edge(g, 2, 4);
     add_edge(g, 3, 2);
+    print_graph(g);
+    free_graph(g);
 }
