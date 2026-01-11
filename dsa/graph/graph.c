@@ -1,9 +1,10 @@
 #include <stdio.h>
 #include <stdlib.h>
-
+#include <limits.h>
 typedef struct Node
 {
     int vertex;
+    int weight;
     struct Node *next;
 
 } Node;
@@ -15,10 +16,11 @@ typedef struct Graph
 
 } Graph;
 
-Node *create_node(int vertex)
+Node *create_node(int vertex, int weight)
 {
     Node *new_node = malloc(sizeof(*new_node));
     new_node->vertex = vertex;
+    new_node->weight = weight;
     new_node->next = NULL;
     return new_node;
 }
@@ -37,16 +39,16 @@ Graph *create_graph(int vertices)
     return new_graph;
 }
 
-void add_edge(Graph *graph, int src, int dest)
+void add_edge(Graph *graph, int src, int dest, int weight)
 {
-    Node *dest_node = create_node(dest);
+    Node *dest_node = create_node(dest, weight);
     dest_node->next = graph->adjlist[src];
     graph->adjlist[src] = dest_node;
 
     // unidirected
-    // Node *src_node = create_node(src);
-    // src_node->next = graph->adjlist[src];
-    // graph->adjlist[src] = src_node;
+    Node *src_node = create_node(src, weight);
+    src_node->next = graph->adjlist[dest];
+    graph->adjlist[dest] = src_node;
 }
 
 void print_graph(Graph *graph)
@@ -339,9 +341,72 @@ void bfs_topological_sort(Graph *graph)
     bfs_topological_sort_helper(graph);
 }
 
+
+// this not a exact dijkstra algo
+typedef struct DijkNode
+{
+    int vertex;
+    int distance;
+
+} DijkNode;
+
+DijkNode *create_dijk(int vertex, int distance)
+{
+    DijkNode *new = malloc(sizeof(DijkNode));
+    new->distance = distance;
+    new->vertex = vertex;
+    return new;
+}
+
+int *dijkstraAlgo(Graph *graph, int src)
+{
+    int *distance = malloc(graph->vertices * sizeof(*distance));
+
+    DijkNode **queue = malloc((graph->vertices * graph->vertices) * sizeof(*queue));
+
+    for (int i = 0; i < graph->vertices; ++i)
+    {
+        distance[i] = INT_MAX;
+    }
+
+    distance[src] = 0;
+    int r = 0, f = 0;
+    queue[r++] = create_dijk(src, 0);
+
+    while (f < r)
+    {
+        DijkNode *src = queue[f++];
+
+        Node *temp = graph->adjlist[src->vertex];
+
+        while (temp)
+        {
+
+            if (distance[temp->vertex] > (temp->weight + src->distance))
+            {
+                distance[temp->vertex] = temp->weight + src->distance;
+                queue[r++] = create_dijk(temp->vertex, distance[temp->vertex]);
+            }
+            temp = temp->next;
+        }
+    }
+
+    for (int i = 0; i < r; ++i)
+    {
+        free(queue[i]);
+    }
+    free(queue);
+
+    for (int i = 0; i < graph->vertices; ++i)
+    {
+        printf(" %d------->%d = %d \n", src, i, distance[i]);
+    }
+    return distance;
+}
+
 int main()
 {
-    Graph *g = create_graph(9);
+    //Graph *g = create_graph(9);
     // Node 0 has neighbors 1 and 2
     // add_edge(g, 0, 1);
     // add_edge(g, 0, 2);
@@ -390,22 +455,22 @@ int main()
     // free_graph(g1);
 
     // test cycle
-    add_edge(g, 0, 1);
-    add_edge(g, 0, 2);
+    // add_edge(g, 0, 1, 4);
+    // add_edge(g, 0, 2, 5);
 
-    add_edge(g, 1, 3);
-    add_edge(g, 1, 4);
+    // add_edge(g, 1, 3, 6);
+    // add_edge(g, 1, 4, 6);
 
-    add_edge(g, 2, 5);
-    add_edge(g, 2, 6);
+    // add_edge(g, 2, 5, 7);
+    // add_edge(g, 2, 6, 2);
 
-    add_edge(g, 3, 7);
-    add_edge(g, 4, 8);
+    // add_edge(g, 3, 7, 11);
+    // add_edge(g, 4, 8, 45);
 
-    add_edge(g, 6, 9);
+    // add_edge(g, 6, 9, 66);
 
-    print_graph(g);
-    bfs(g);
+    // print_graph(g);
+    // bfs(g);
     // int f = bfs_check_cycle(g);
     // int f = dfs_check_cycle(g);
     // printf("cycle exist %d", f);
@@ -413,5 +478,18 @@ int main()
     // dfs_topological_sort(g);
     // printf("\n");
     // bfs_topological_sort(g);
-    free_graph(g);
+
+
+    Graph *graph = create_graph(5);
+
+    add_edge(graph, 0, 1, 10);
+    add_edge(graph, 0, 4, 5);
+    add_edge(graph, 1, 2, 1);
+    add_edge(graph, 4, 1, 3);
+    add_edge(graph, 4, 2, 9);
+    add_edge(graph, 2, 3, 4);
+    int *distance = dijkstraAlgo(graph, 2);
+
+    free(distance);
+    free_graph(graph);
 }
