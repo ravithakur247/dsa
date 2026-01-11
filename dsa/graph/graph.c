@@ -120,60 +120,253 @@ void dfs(Graph *graph)
 
 void bfs(Graph *graph)
 {
-    int f = 0, r = 0;
+
     int *visited = calloc(graph->vertices, sizeof(*visited));
     int *queue = malloc(graph->vertices * sizeof(*queue));
 
-    queue[r++] = 0;
-    visited[0] = 1;
+    for (int start = 0; start < graph->vertices; ++start)
+    {
+        if (visited[start])
+            continue;
+        int f = 0, r = 0;
+        queue[r++] = 0;
+        visited[0] = 1;
+        while (f < r)
+        {
+            int curr = queue[f++];
+            printf("%d----", curr);
+            Node *temp = graph->adjlist[curr];
+            while (temp)
+            {
+                int v = temp->vertex;
+                if (!visited[v])
+                {
+                    visited[v] = 1;
+                    queue[r++] = v;
+                }
+                temp = temp->next;
+            }
+        }
+    }
+
+    free(queue);
+    free(visited);
+}
+
+typedef struct VisitedNode
+{
+    int vertex;
+    int parent;
+} VisitedNode;
+
+VisitedNode *create_visit_node(int vertex, int parent)
+{
+    VisitedNode *new_node = malloc(sizeof(*new_node));
+    new_node->parent = parent;
+    new_node->vertex = vertex;
+    return new_node;
+}
+
+int bfs_check_cycle(Graph *graph)
+{
+    int r = 0, f = 0;
+    int src = 0;
+    int *visited = calloc(graph->vertices, sizeof(*visited));
+    int result = 0;
+    VisitedNode **queue = malloc(graph->vertices * sizeof(*queue));
+    for (int i = 0; i < graph->vertices; ++i)
+    {
+        queue[i] = NULL;
+    }
+    visited[src] = 1;
+    queue[r++] = create_visit_node(src, -1);
 
     while (f < r)
     {
-        int curr = queue[f++];
-        printf("%d----", curr);
-        Node *temp = graph->adjlist[curr];
+        VisitedNode *curr = queue[f++];
+
+        Node *temp = graph->adjlist[curr->vertex];
+
         while (temp)
         {
             int v = temp->vertex;
             if (!visited[v])
             {
+                queue[r++] = create_visit_node(v, curr->vertex);
                 visited[v] = 1;
-                queue[r++] = v;
+            }
+            else if (curr->parent != v)
+            {
+                result = 1;
+                goto release;
             }
             temp = temp->next;
         }
     }
+
+release:
+    for (int i = 0; i < r; ++i)
+    {
+        free(queue[i]);
+    }
     free(queue);
     free(visited);
+
+    return result;
+}
+
+int dfs_cycle_helper(int src, int parent, Graph *graph, int *visited)
+{
+
+    visited[src] = 1;
+
+    Node *curr = graph->adjlist[src];
+
+    while (curr)
+    {
+        if (!visited[curr->vertex])
+        {
+            if (dfs_cycle_helper(curr->vertex, src, graph, visited))
+            {
+                return 1;
+            }
+        }
+        else if (parent != curr->vertex)
+        {
+            return 1;
+        }
+        curr = curr->next;
+    }
+    return 0;
+}
+
+int dfs_check_cycle(Graph *graph)
+{
+    int *visited = malloc(graph->vertices * sizeof(*visited));
+    int src = 0;
+    return dfs_cycle_helper(src, -1, graph, visited);
+}
+
+void dfs_topological_sort_helper(Graph *graph, int *visited, int *stack, int src, int *index)
+{
+    visited[src] = 1;
+
+    Node *curr = graph->adjlist[src];
+
+    while (curr)
+    {
+        if (!visited[curr->vertex])
+        {
+            dfs_topological_sort_helper(graph, visited, stack, curr->vertex, index);
+        }
+        curr = curr->next;
+    }
+
+    stack[(*index)++] = src;
+}
+void dfs_topological_sort(Graph *graph)
+{
+    int *visited = calloc(graph->vertices, sizeof(*visited));
+    int *stack = malloc(graph->vertices * sizeof(*stack));
+    int index = 0;
+
+    for (int i = 0; i < graph->vertices; ++i)
+    {
+        if (!visited[i])
+        {
+            dfs_topological_sort_helper(graph, visited, stack, i, &index);
+        }
+    }
+
+    for (int i = index - 1; i >= 0; --i)
+    {
+        printf("%d---->", stack[i]);
+    }
+
+    free(visited);
+    free(stack);
+}
+
+void bfs_topological_sort_helper(Graph *graph)
+{
+    int *indegree_list = calloc(graph->vertices, sizeof(*indegree_list));
+
+    int *queue = malloc(graph->vertices * sizeof(*queue));
+
+    int r = 0, f = 0;
+
+    for (int i = 0; i < graph->vertices; ++i)
+    {
+        Node *temp = graph->adjlist[i];
+        while (temp)
+        {
+            indegree_list[temp->vertex]++;
+            temp = temp->next;
+        }
+    }
+
+    for (int i = 0; i < graph->vertices; i++)
+    {
+        if (indegree_list[i] == 0)
+        {
+            queue[r++] = i;
+        }
+    }
+
+    while (f < r)
+    {
+        int curr = queue[f++];
+        printf("%d----->", curr);
+
+        Node *temp = graph->adjlist[curr];
+
+        while (temp)
+        {
+            indegree_list[temp->vertex]--;
+            if (indegree_list[temp->vertex] == 0)
+            {
+                queue[r++] = temp->vertex;
+            }
+            temp = temp->next;
+        }
+    }
+
+    free(queue);
+    free(indegree_list);
+}
+void bfs_topological_sort(Graph *graph)
+{
+    bfs_topological_sort_helper(graph);
 }
 
 int main()
 {
     Graph *g = create_graph(9);
     // Node 0 has neighbors 1 and 2
-    add_edge(g, 0, 1);
-    add_edge(g, 0, 2);
+    // add_edge(g, 0, 1);
+    // add_edge(g, 0, 2);
 
-    // Other connections
-    add_edge(g, 1, 3);
-    add_edge(g, 1, 4);
+    // // Other connections
+    // add_edge(g, 1, 3);
+    // add_edge(g, 1, 4);
 
-    add_edge(g, 2, 5);
-    add_edge(g, 2, 6);
+    // add_edge(g, 2, 5);
+    // add_edge(g, 2, 6);
 
-    add_edge(g, 3, 7);
-    add_edge(g, 4, 7);
+    // add_edge(g, 3, 7);
+    // add_edge(g, 4, 7);
 
-    add_edge(g, 5, 8);
-    add_edge(g, 6, 8);
+    // add_edge(g, 5, 8);
+    // add_edge(g, 6, 8);
 
-    add_edge(g, 7, 9);
-    add_edge(g, 8, 9);
+    // add_edge(g, 7, 9);
+    // add_edge(g, 8, 9);
 
-    print_graph(g);
-    // dfs(g);
-    bfs(g);
-    free_graph(g);
+    // print_graph(g);
+    // // dfs(g);
+    // printf("\n");
+    // bfs(g);
+    // free_graph(g);
 
     ///////
     // Graph *g1 = create_graph(9);
@@ -195,4 +388,30 @@ int main()
     // print_graph(g1);
     // dfs(g1);
     // free_graph(g1);
+
+    // test cycle
+    add_edge(g, 0, 1);
+    add_edge(g, 0, 2);
+
+    add_edge(g, 1, 3);
+    add_edge(g, 1, 4);
+
+    add_edge(g, 2, 5);
+    add_edge(g, 2, 6);
+
+    add_edge(g, 3, 7);
+    add_edge(g, 4, 8);
+
+    add_edge(g, 6, 9);
+
+    print_graph(g);
+    bfs(g);
+    // int f = bfs_check_cycle(g);
+    // int f = dfs_check_cycle(g);
+    // printf("cycle exist %d", f);
+
+    // dfs_topological_sort(g);
+    // printf("\n");
+    // bfs_topological_sort(g);
+    free_graph(g);
 }
